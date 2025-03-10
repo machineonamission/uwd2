@@ -11,5 +11,9 @@ pub fn data_dir() -> PathBuf {
 pub const SHELL32_PATH: &str = r"C:\Windows\System32\shell32.dll";
 
 // ret instruction
-// NOTE: THIS IS FOR X86, WILL NOT WORK ON ARM
-pub const RET: u8 = 0xC3;
+#[cfg(target_arch = "x86_64")]
+pub const RET: [u8; 1] = [0xC3];
+
+// br lr instruction
+#[cfg(target_arch = "aarch64")]
+pub const RET: [u8; 4] = [0xc0, 0x03, 0x1f, 0xd6];

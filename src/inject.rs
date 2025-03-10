@@ -19,14 +19,13 @@ pub unsafe fn inject(rva: u32) {
     println!("Offset of shell32 inside explorer.exe is {offset:#x}");
     let explorerhandle = get_explorer_handle();
     println!("Injecting ret...");
-    let buffer: [u8; 1] = [RET];
     // write return instruction to address of function, effectively disabling it
     WriteProcessMemory(
         explorerhandle,
         // offset is position of dll inside explorer.exe, rva is position of func inside dll
         (offset + rva as u64) as *const c_void,
-        &buffer as *const u8 as *const c_void,
-        1,
+        &RET as *const u8 as *const c_void,
+        RET.len(),
         None,
     )
     .unwrap();

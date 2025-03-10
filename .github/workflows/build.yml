@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Release - ${{ matrix.platform.release_for }}
+    strategy:
+      matrix:
+        platform:
+          - release_for: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: ${{ github.event.repository.name }}.exe
+            name: ${{ github.event.repository.name }}-x86_64-pc-windows-msvc.exe
+            command: build
+
+          - release_for: Windows-ARM
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            bin: ${{ github.event.repository.name }}.exe
+            name: ${{ github.event.repository.name }}-aarch64-pc-windows-msvc.exe
+            command: build
+
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform.target }}  # not sure if this is necessary but it makes me sleep at night
+      - name: add clang to path
+        run: '$env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin"'
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: ${{ matrix.platform.command }}
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+          toolchain: stable
+      - name: Rename binary
+        run: mv ./target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} ./${{matrix.platform.name}}
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # github forces these to be a zip which is dumb but whatever might as well embrace it,,,
+          name: ${{ matrix.platform.name }}
+          path: "./${{matrix.platform.name}}"
+  zip_and_upload:
+    name: Zip and Upload
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      # download step unzips artifacts
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./downloads
+      - name: Move binaries
+        run: |
+          mkdir artifacts
+          mv ./downloads/**/* ./artifacts
+      - name: Upload final zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregate
+          path: ./artifacts/*
