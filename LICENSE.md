@@ -1,5 +1,6 @@
-# Standard "Machine on a Mission" License
-The Standard "Machine on a Mission" License is a combination of GNU AGPL-3.0-or-later and the Commons Clause.
+# AGPL3 License + Commons Clause
+This project is licensed under a combination of GNU AGPL-3.0-or-later and the Commons Clause.
+
 ## ✅ Permissions
  - **Modification**:
 The licensed material may be modified.
