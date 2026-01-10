@@ -9,6 +9,7 @@ mod explorer_modinfo;
 mod fetch_pdb;
 mod inject;
 mod parse_pdb;
+mod auto_launch;
 
 fn prog() -> String {
     // modified from https://stackoverflow.com/a/58113997/9044183
