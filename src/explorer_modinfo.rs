@@ -14,7 +14,10 @@ use windows::Win32::System::Threading::{OpenProcess, PROCESS_ALL_ACCESS};
 use crate::constants::*;
 
 pub unsafe fn get_guid() -> String {
-    let modinfo = get_shell32_modinfo();
+    let modinfo = get_all_shell32_modinfos()
+        .into_iter()
+        .next()
+        .expect("no explorer process found");
     let sig = modinfo.PdbSig70.to_u128();
     let age = modinfo.PdbAge;
     // format as hex as michael expects
@@ -22,48 +25,43 @@ pub unsafe fn get_guid() -> String {
 }
 
 pub unsafe fn get_shell32_offset() -> u64 {
-    let modinfo = get_shell32_modinfo();
+    let modinfo = get_all_shell32_modinfos()
+        .into_iter()
+        .next()
+        .expect("no explorer process found");
     modinfo.BaseOfImage
 }
 
-pub unsafe fn get_explorer_handle() -> HANDLE {
-    let explorerid =
-        // initialize sysinfo with process info
-        sysinfo::System::new_with_specifics(
-            sysinfo::RefreshKind::new().with_processes(sysinfo::ProcessRefreshKind::everything()),
-        )
-            // get explorer
-            .processes()
-            .values()
-            .find(|proc| {
-                if let Some(p) = proc.exe() {
-                    p == Path::new(r"C:\Windows\explorer.exe")
-                } else {
-                    false
-                }
-            })
-            .unwrap()
-            // get PID
-            .pid()
-            .as_u32();
+// Return handles for every running explorer.exe process (case-insensitive match on file name).
+pub unsafe fn get_explorer_handles() -> Vec<HANDLE> {
+    let sys = sysinfo::System::new_with_specifics(
+        sysinfo::RefreshKind::new().with_processes(sysinfo::ProcessRefreshKind::everything()),
+    );
 
-    OpenProcess(PROCESS_ALL_ACCESS, FALSE, explorerid).unwrap()
+    sys.processes()
+        .values()
+        .filter_map(|proc| {
+            if let Some(p) = proc.exe() {
+                if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                    if name.eq_ignore_ascii_case("explorer.exe") {
+                        return Some(OpenProcess(PROCESS_ALL_ACCESS, FALSE, proc.pid().as_u32()).unwrap());
+                    }
+                }
+            }
+            None
+        })
+        .collect()
 }
 
-pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {
-    // get info of shell32.dll using running explorer.exe
-
-    let explorerhandle = get_explorer_handle();
-
-    // let currentprocess = GetCurrentProcess();
+// Get shell32 IMAGEHLP_MODULE64 for a specific explorer process handle.
+// This closes the provided process handle before returning.
+pub unsafe fn get_shell32_modinfo(explorerhandle: HANDLE) -> IMAGEHLP_MODULE64 {
     SymInitialize(explorerhandle, PCSTR::null(), true).expect("initializing failed");
     SymSetOptions(SYMOPT_UNDNAME);
     let nullterminatedpath = format!("{}\0", SHELL32_PATH);
-    // dbg!(&nullterminatedpath);
     let name = PCSTR::from_raw(nullterminatedpath.as_ptr());
     let mut module = HMODULE::default();
     GetModuleHandleExA(0, name, &mut module as *mut HMODULE).unwrap();
-    // let module = LoadLibraryExA(name, HANDLE::default(), LOAD_LIBRARY_FLAGS::default()).unwrap();
     let r = SymLoadModuleEx(
         explorerhandle,    // target process
         HANDLE::default(), // handle to image - not used
@@ -87,7 +85,19 @@ pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {
         &mut modinfo as *mut IMAGEHLP_MODULE64,
     )
     .unwrap();
-    CloseHandle(explorerhandle.0);
-    // dbg!(modinfo);
+    // DO NOT close the process handle here; caller may want to use it (e.g. to WriteProcessMemory)
     modinfo
+}
+
+// Collect IMAGEHLP_MODULE64 for every running explorer.exe instance.
+pub unsafe fn get_all_shell32_modinfos() -> Vec<IMAGEHLP_MODULE64> {
+    let handles = get_explorer_handles();
+    let mut out = Vec::new();
+    for h in handles {
+        let m = get_shell32_modinfo(h);
+        // close the handle after we've collected info
+        CloseHandle(h.0);
+        out.push(m);
+    }
+    out
 }

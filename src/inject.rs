@@ -11,26 +11,29 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::constants::*;
-use crate::explorer_modinfo::{get_explorer_handle, get_shell32_offset};
+use crate::explorer_modinfo::{get_explorer_handles, get_shell32_modinfo};
 
 pub unsafe fn inject(rva: u32) {
-    println!("Getting shell32 offset...");
-    let offset = get_shell32_offset();
-    println!("Offset of shell32 inside explorer.exe is {offset:#x}");
-    let explorerhandle = get_explorer_handle();
-    println!("Injecting ret...");
-    // write return instruction to address of function, effectively disabling it
-    WriteProcessMemory(
-        explorerhandle,
-        // offset is position of dll inside explorer.exe, rva is position of func inside dll
-        (offset + rva as u64) as *const c_void,
-        &RET as *const u8 as *const c_void,
-        RET.len(),
-        None,
-    )
-    .unwrap();
-    println!("Injected!");
-    CloseHandle(explorerhandle.0);
+    println!("Getting shell32 offsets for each explorer instance...");
+    let handles = get_explorer_handles();
+    for handle in handles {
+        let modinfo = get_shell32_modinfo(handle);
+        let offset = modinfo.BaseOfImage;
+        println!("Offset of shell32 inside explorer.exe is {offset:#x}");
+        println!("Injecting ret into process handle {:#x}...", handle.0);
+        // write return instruction to address of function, effectively disabling it
+        WriteProcessMemory(
+            handle,
+            // offset is position of dll inside explorer.exe, rva is position of func inside dll
+            (offset + rva as u64) as *const c_void,
+            &RET as *const u8 as *const c_void,
+            RET.len(),
+            None,
+        )
+        .unwrap();
+        println!("Injected!");
+        CloseHandle(handle.0);
+    }
 }
 
 pub unsafe fn refresh() {
