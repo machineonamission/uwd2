@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::mem::size_of;
 use std::path::Path;
 
@@ -5,8 +6,8 @@ use windows::core::imp::CloseHandle;
 use windows::core::PCSTR;
 use windows::Win32::Foundation::{GetLastError, FALSE, HANDLE, HMODULE};
 use windows::Win32::System::Diagnostics::Debug::{
-    SymGetModuleInfo64, SymInitialize, SymLoadModuleEx, SymSetOptions, IMAGEHLP_MODULE64,
-    SYMOPT_UNDNAME, SYM_LOAD_FLAGS,
+    ReadProcessMemory, SymGetModuleInfo64, SymInitialize, SymLoadModuleEx, SymSetOptions,
+    IMAGEHLP_MODULE64, SYMOPT_UNDNAME, SYM_LOAD_FLAGS,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleExA;
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_ALL_ACCESS};
@@ -48,6 +49,24 @@ pub unsafe fn get_explorer_handle() -> HANDLE {
             .as_u32();
 
     OpenProcess(PROCESS_ALL_ACCESS, FALSE, explorerid).unwrap()
+}
+
+/// Reads `expected.len()` bytes from the live explorer process at
+/// `shell32_base + rva` and returns true only if they exactly match `expected`.
+pub unsafe fn verify_rva(rva: u32, expected: &[u8]) -> bool {
+    let base = get_shell32_offset();
+    let handle = get_explorer_handle();
+    let addr = (base + rva as u64) as *const c_void;
+    let mut buf = vec![0u8; expected.len()];
+    let ok = ReadProcessMemory(
+        handle,
+        addr,
+        buf.as_mut_ptr() as *mut c_void,
+        buf.len(),
+        None,
+    );
+    CloseHandle(handle.0);
+    ok.is_ok() && buf == expected
 }
 
 pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {

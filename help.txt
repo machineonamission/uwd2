@@ -5,6 +5,14 @@ USAGE:
 
 SUBCOMMANDS:
     <no subcommand> Alias for inject subcommand
-    inject          Injects into the running explorer.exe process's memory to remove the watermark. Does not persist if explorer.exe or system is restarted.
+    inject          Removes the watermark by patching explorer.exe in memory.
+                    Does not persist if explorer.exe or the system is restarted.
+                    Use install-task to automate re-patching.
+    patch-rva <hex> Manually supply the RVA of CDesktopWatermark::s_DesktopBuildPaint,
+                    cache it, and apply the patch. Use this when all automatic
+                    methods fail (e.g. PDB not yet on symbol server).
+    install-task    Installs a scheduled task that re-runs inject at every logon,
+                    so the watermark stays gone across explorer.exe restarts.
+    remove-task     Removes the scheduled task installed by install-task.
     help            Shows this menu
-    about           Shows some information about UWD2
+    about           Shows information about UWD2

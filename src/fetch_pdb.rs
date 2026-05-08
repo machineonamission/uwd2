@@ -4,8 +4,18 @@ pub fn build_url(guid: String) -> String {
     format!("http://msdl.microsoft.com/download/symbols/shell32.pdb/{guid}/shell32.pdb")
 }
 
-pub fn fetch(url: String) -> Vec<u8> {
-    let resp = ureq::get(url.as_str()).call().unwrap();
+/// Returns None if the symbol server responds 404 (PDB not yet uploaded).
+/// Panics on any other network or HTTP error.
+pub fn try_fetch(url: String) -> Option<Vec<u8>> {
+    let resp = match ureq::get(url.as_str()).call() {
+        Ok(r) => r,
+        Err(ureq::Error::Status(404, _)) => {
+            println!("Symbol server returned 404 — PDB not yet available.");
+            return None;
+        }
+        Err(e) => panic!("Failed to fetch PDB: {e}"),
+    };
+
     let len: usize = if resp.has("Content-Length") {
         resp.header("Content-Length").unwrap().parse().unwrap()
     } else {
@@ -18,5 +28,5 @@ pub fn fetch(url: String) -> Vec<u8> {
         .take(u64::MAX)
         .read_to_end(&mut buf)
         .unwrap();
-    buf
+    Some(buf)
 }
