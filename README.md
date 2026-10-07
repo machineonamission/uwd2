@@ -15,11 +15,13 @@ Written in [Rust](https://www.rust-lang.org/)
 
 UWD2 removes that pesky watermark in the corner of Windows Insider builds, as well as other similar types of watermarks.
 
-## How to use it?
+## How to use it
 
-Just run the exe file in the [releases tab](https://github.com/machineonamission/uwd2/releases) and watch the watermark
-vanish before your eyes! For best results, add UWD2
-as [a startup program](https://support.microsoft.com/en-us/windows/add-apps-to-the-startup-page-in-settings-3d219555-bc76-449d-ab89-0d2dd6307164).
+Run UWD2 to open its Windows interface. Click **Remove watermark now** to apply the change to the current Explorer session. Use **Enable at startup** to have UWD2 apply the change when you sign in, or **Disable at startup** to remove it from the current user's Startup folder. The startup setting affects future sign-ins only.
+
+Use **Use dark mode** or **Use light mode** to switch the interface theme. UWD2 saves the theme choice for the next launch.
+
+The command-line interface remains available for the current Explorer session: `uwd2.exe enable`, `uwd2.exe disable`, `uwd2.exe status`, and `uwd2.exe help`.
 
 ## Some disclaimers
 
@@ -27,13 +29,11 @@ as [a startup program](https://support.microsoft.com/en-us/windows/add-apps-to-t
 
 UWD2 is for the insider beta watermark.
 
-**UWD2 DOES NOT persist between explorer.exe or system restarts**. [See why below](#how-does-it-work). For best results,
-add UWD2
-as [a startup program](https://support.microsoft.com/en-us/windows/add-apps-to-the-startup-page-in-settings-3d219555-bc76-449d-ab89-0d2dd6307164).
+**UWD2 DOES NOT persist between explorer.exe or system restarts**. [See why below](#how-does-it-work). Enable startup in the interface to reapply it at sign-in.
 
 UWD2 requires an internet connection on first run and between some system updates. [See why below](#how-does-it-work).
 
-UWD2 only works on x86 based CPUs, i.e., not ARM. [See why below](#how-does-it-work).
+UWD2 uses architecture-specific return instructions for x86-64 and ARM64. ARM64 has not been verified on a Windows Insider build.
 
 UWD2 has only been tested on Windows insider beta watermarks. It may work on other similar watermark such as "test
 mode", but these are untested.
@@ -48,6 +48,6 @@ desktop. Using this knowledge, UWD2:
 - downloads debugging symbols from microsoft (this is why UWD2 needs an internet connection. UWD2 also caches these
   locally)
 - Uses those symbols to find the memory location of `CDesktopWatermark::s_DesktopBuildPaint`
-- Inserts a `ret` (return) instruction (this is why UWD2 only works on x86) into the memory of the running
+- Inserts an architecture-specific `ret` instruction into the memory of the running
   explorer.exe (this is why UWD2 does not persist) at the position of the `CDesktopWatermark::s_DesktopBuildPaint`
   function, causing the function's code to never execute.

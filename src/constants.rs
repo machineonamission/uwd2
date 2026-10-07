@@ -8,6 +8,11 @@ pub fn data_dir() -> PathBuf {
     dir.to_owned()
 }
 
+pub fn config_dir() -> PathBuf {
+    let binding = ProjectDirs::from("net", "reticivis", "UWD2").unwrap();
+    binding.config_dir().to_owned()
+}
+
 pub const SHELL32_PATH: &str = r"C:\Windows\System32\shell32.dll";
 
 // ret instruction

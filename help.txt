@@ -1,10 +1,16 @@
-UWD2 v{}
+Universal Watermark Disabler 2 v{}
 
 USAGE:
     {} [SUBCOMMAND]
 
 SUBCOMMANDS:
-    <no subcommand> Alias for inject subcommand
-    inject          Injects into the running explorer.exe process's memory to remove the watermark. Does not persist if explorer.exe or system is restarted.
+    <no subcommand> Opens the graphical interface
+    ui              Opens the graphical interface
+    enable          Enables UWD2 for the current Explorer session
+    inject          Alias for enable
+    disable         Restores the saved instruction in the current Explorer session
+    status          Shows whether UWD2 is on
     help            Shows this menu
     about           Shows some information about UWD2
+
+The UI can remove the watermark from the current Explorer session and enable or disable automatic startup for the current user. Startup changes only affect future sign-ins.

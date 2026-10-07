@@ -27,27 +27,27 @@ pub unsafe fn get_shell32_offset() -> u64 {
 }
 
 pub unsafe fn get_explorer_handle() -> HANDLE {
-    let explorerid =
-        // initialize sysinfo with process info
-        sysinfo::System::new_with_specifics(
-            sysinfo::RefreshKind::new().with_processes(sysinfo::ProcessRefreshKind::everything()),
-        )
-            // get explorer
-            .processes()
-            .values()
-            .find(|proc| {
-                if let Some(p) = proc.exe() {
-                    p == Path::new(r"C:\Windows\explorer.exe")
-                } else {
-                    false
-                }
-            })
-            .unwrap()
-            // get PID
-            .pid()
-            .as_u32();
+    get_explorer_handle_for(get_explorer_info().0)
+}
 
-    OpenProcess(PROCESS_ALL_ACCESS, FALSE, explorerid).unwrap()
+pub unsafe fn get_explorer_handle_for(process_id: u32) -> HANDLE {
+    OpenProcess(PROCESS_ALL_ACCESS, FALSE, process_id).unwrap()
+}
+
+pub fn get_explorer_info() -> (u32, u64) {
+    let system = sysinfo::System::new_with_specifics(
+        sysinfo::RefreshKind::new().with_processes(sysinfo::ProcessRefreshKind::everything()),
+    );
+    let process = system
+        .processes()
+        .values()
+        .find(|proc| {
+            proc.exe()
+                .map(|p| p == Path::new(r"C:\Windows\explorer.exe"))
+                == Some(true)
+        })
+        .unwrap();
+    (process.pid().as_u32(), process.start_time())
 }
 
 pub unsafe fn get_shell32_modinfo() -> IMAGEHLP_MODULE64 {
